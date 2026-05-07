@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="format-detection" content="telephone=no, email=no, address=no">
+  <meta name="description" content="星轨消消乐：拖动整行整列的创意消除小游戏，适合微信移动端和 GitHub Pages 打开。">
+  <meta property="og:title" content="星轨消消乐">
+  <meta property="og:description" content="旋转星轨、完成星愿、触发连锁爆发。">
+  <meta property="og:type" content="website">
   <meta name="theme-color" content="#071015">
   <title>星轨消消乐</title>
   <style>
@@ -137,7 +141,7 @@
     .hud {
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 8px;
     }
 
@@ -291,6 +295,7 @@
         <div class="metric"><span>步数</span><strong id="moves">28</strong></div>
         <div class="metric"><span>能量</span><strong id="score">0</strong></div>
         <div class="metric"><span>目标</span><strong id="goal">1800</strong></div>
+        <div class="metric"><span>星愿</span><strong id="wish">--</strong></div>
       </div>
     </header>
     <main>
@@ -298,7 +303,7 @@
       <div id="veil" class="veil show">
         <div class="dialog">
           <h2 id="dialogTitle">点亮星图</h2>
-          <p id="dialogText">滑动一整行或一整列，让星星循环移动。三颗以上相连会爆发，连锁越多越亮。</p>
+          <p id="dialogText">滑动一整行或一整列，让星星循环移动。完成右上角星愿会立刻加能量，带光环的星星会引爆十字星轨。</p>
           <button id="start" class="primary">开始</button>
         </div>
       </div>
@@ -312,6 +317,7 @@
     const movesEl = document.getElementById("moves");
     const scoreEl = document.getElementById("score");
     const goalEl = document.getElementById("goal");
+    const wishEl = document.getElementById("wish");
     const restartBtn = document.getElementById("restart");
     const hintBtn = document.getElementById("hint");
     const veil = document.getElementById("veil");
@@ -328,7 +334,8 @@
       { name: "leaf", color: "#61d68e", shape: "hex" },
       { name: "violet", color: "#9d83ff", shape: "star" }
     ];
-    const GOAL = 1800;
+    const TYPE_LABELS = ["日", "彗", "焰", "森", "紫"];
+    const GOAL = 2200;
     const START_MOVES = 28;
 
     let W = 1;
@@ -353,7 +360,8 @@
     let state = {
       moves: START_MOVES,
       score: 0,
-      chain: 0
+      chain: 0,
+      wish: null
     };
 
     const rand = (min, max) => min + Math.random() * (max - min);
@@ -381,7 +389,7 @@
     }
 
     function newGame() {
-      state = { moves: START_MOVES, score: 0, chain: 0 };
+      state = { moves: START_MOVES, score: 0, chain: 0, wish: makeWish() };
       selectedHint = null;
       resolving = false;
       gameOver = false;
@@ -425,6 +433,14 @@
       movesEl.textContent = state.moves;
       scoreEl.textContent = state.score;
       goalEl.textContent = GOAL;
+      wishEl.textContent = state.wish ? `${TYPE_LABELS[state.wish.type]}x${state.wish.left}` : "--";
+    }
+
+    function makeWish() {
+      return {
+        type: randomType(),
+        left: Math.floor(rand(4, 7))
+      };
     }
 
     function showDialog(title, text, action) {
@@ -487,10 +503,11 @@
 
       while (matches.size) {
         state.chain += 1;
+        const wishBonus = collectWish(matches);
         const bonus = state.chain > 1 ? state.chain * 40 : 0;
-        const points = matches.size * 18 + bonus;
+        const points = matches.size * 18 + bonus + wishBonus;
         state.score += points;
-        showToast(state.chain > 1 ? `连锁 x${state.chain}` : `+${points}`);
+        showToast(wishBonus ? `星愿 +${wishBonus}` : state.chain > 1 ? `连锁 x${state.chain}` : `+${points}`);
         burst(matches);
         updateHud();
         await wait(210);
@@ -502,6 +519,19 @@
       resolving = false;
       ensureMove();
       if (!initial) checkEnd();
+    }
+
+    function collectWish(matches) {
+      if (!state.wish) return 0;
+      let count = 0;
+      for (const key of matches) {
+        const [x, y] = key.split(",").map(Number);
+        if (board[y][x] && board[y][x].type === state.wish.type) count += 1;
+      }
+      state.wish.left = Math.max(0, state.wish.left - count);
+      if (state.wish.left > 0) return 0;
+      state.wish = makeWish();
+      return 240 + state.chain * 60;
     }
 
     function findMatches() {
@@ -747,6 +777,10 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("横滑移动整行 · 竖滑移动整列", W / 2, y);
+      if (state.wish) {
+        ctx.fillStyle = TYPES[state.wish.type].color;
+        ctx.fillText(`星愿：消除 ${state.wish.left} 颗${TYPE_LABELS[state.wish.type]}星`, W / 2, y + 22);
+      }
     }
 
     function drawParticles() {
@@ -886,6 +920,7 @@
     window.addEventListener("orientationchange", () => window.setTimeout(resize, 240));
     resize();
     board = makeBoard();
+    state.wish = makeWish();
     updateHud();
     requestAnimationFrame(loop);
   </script>
