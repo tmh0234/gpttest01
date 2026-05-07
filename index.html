@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no, email=no, address=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#071013">
+  <title>一分钟月台</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #fff7df;
+      --soft: rgba(255, 247, 223, 0.68);
+      --line: rgba(255, 247, 223, 0.18);
+      --panel: rgba(10, 17, 25, 0.86);
+      --cyan: #20d6e6;
+      --gold: #f5bb33;
+      --rose: #ef476f;
+      --mint: #4fca86;
+      --violet: #8b7cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(32, 214, 230, 0.12), transparent 26%),
+        radial-gradient(circle at 82% 12%, rgba(245, 187, 51, 0.09), transparent 24%),
+        linear-gradient(160deg, #061012 0%, #10121c 55%, #1a1116 100%);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+      overscroll-behavior: none;
+    }
+
+    .app {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 320px;
+      min-height: 480px;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px 8px;
+      background: linear-gradient(180deg, rgba(5, 9, 14, 0.9), rgba(5, 9, 14, 0.35));
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+      z-index: 3;
+    }
+
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .badge {
+      width: 34px;
+      height: 34px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      background: #101925;
+      box-shadow: 0 0 0 3px rgba(32, 214, 230, 0.16);
+    }
+
+    .badge::before {
+      content: "";
+      width: 18px;
+      height: 18px;
+      background:
+        linear-gradient(var(--gold), var(--gold)) center / 18px 4px no-repeat,
+        linear-gradient(var(--cyan), var(--cyan)) center / 4px 18px no-repeat;
+      display: block;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(255, 247, 223, 0.26);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(12, 20, 30, 0.82);
+      display: grid;
+      place-items: center;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      background: rgba(24, 38, 52, 0.92);
+    }
+
+    button svg {
+      width: 21px;
+      height: 21px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hud {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .meter {
+      min-width: 0;
+      height: 46px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .meter span {
+      display: block;
+      color: var(--soft);
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    .meter strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 19px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .stage {
+      position: relative;
+      min-height: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .veil {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background: rgba(5, 9, 14, 0.68);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+      z-index: 2;
+    }
+
+    .veil.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .dialog {
+      width: min(310px, 92vw);
+      border: 1px solid rgba(255, 247, 223, 0.24);
+      border-radius: 8px;
+      padding: 18px;
+      background: rgba(10, 17, 25, 0.94);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
+      text-align: center;
+    }
+
+    .dialog h2 {
+      margin: 0 0 10px;
+      font-size: 26px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .dialog p {
+      margin: 0 0 16px;
+      color: var(--soft);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .primary {
+      width: 100%;
+      height: 46px;
+      font-size: 16px;
+      font-weight: 800;
+      border-color: rgba(32, 214, 230, 0.52);
+      background: #12303a;
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      max-width: calc(100% - 32px);
+      transform: translateX(-50%) translateY(12px);
+      opacity: 0;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(7, 12, 18, 0.88);
+      font-size: 13px;
+      line-height: 1.3;
+      white-space: nowrap;
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      z-index: 4;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (min-width: 560px) {
+      .app {
+        width: 430px;
+        max-height: 932px;
+        margin: 0 auto;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        border-left: 1px solid rgba(255, 247, 223, 0.12);
+        border-right: 1px solid rgba(255, 247, 223, 0.12);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <div class="badge" aria-hidden="true"></div>
+        <h1>一分钟月台</h1>
+      </div>
+      <div class="actions">
+        <button id="restart" aria-label="重新开始" title="重新开始">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/></svg>
+        </button>
+        <button id="pause" aria-label="暂停" title="暂停">
+          <svg id="pauseIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14"/><path d="M16 5v14"/></svg>
+        </button>
+      </div>
+      <div class="hud" aria-live="polite">
+        <div class="meter"><span>剩余</span><strong id="time">45</strong></div>
+        <div class="meter"><span>得分</span><strong id="score">0</strong></div>
+        <div class="meter"><span>连击</span><strong id="combo">0</strong></div>
+      </div>
+    </header>
+    <main class="stage">
+      <canvas id="game" aria-label="一分钟月台"></canvas>
+      <div id="veil" class="veil show">
+        <div class="dialog">
+          <h2 id="dialogTitle">发车</h2>
+          <p id="dialogText">把乘客送到同色月台，列车进站时结算。</p>
+          <button id="start" class="primary">开始</button>
+        </div>
+      </div>
+      <div id="toast" class="toast">+100</div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const timeEl = document.getElementById("time");
+    const scoreEl = document.getElementById("score");
+    const comboEl = document.getElementById("combo");
+    const restartBtn = document.getElementById("restart");
+    const pauseBtn = document.getElementById("pause");
+    const pauseIcon = document.getElementById("pauseIcon");
+    const veil = document.getElementById("veil");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const dialogText = document.getElementById("dialogText");
+    const startBtn = document.getElementById("start");
+    const toast = document.getElementById("toast");
+
+    const ROUND_TIME = 45;
+    const lines = [
+      { id: "sun", label: "金", color: "#f5bb33", dark: "#50360e", shape: "circle" },
+      { id: "sea", label: "蓝", color: "#20d6e6", dark: "#0b3e47", shape: "triangle" },
+      { id: "rose", label: "红", color: "#ef476f", dark: "#4d1425", shape: "diamond" }
+    ];
+
+    const state = {
+      time: ROUND_TIME,
+      score: 0,
+      combo: 0,
+      passengers: [],
+      effects: [],
+      spawnTimer: 0,
+      spawnEvery: 1.15,
+      trainTimer: 2.4,
+      trainEvery: 3.8,
+      nextId: 1
+    };
+
+    let W = 1;
+    let H = 1;
+    let scale = 1;
+    let last = performance.now();
+    let started = false;
+    let running = false;
+    let finished = false;
+    let activePointer = null;
+    let dragging = null;
+    let toastTimer = null;
+    let layout = {
+      entrance: { x: 0, y: 0, w: 0, h: 0 },
+      platforms: []
+    };
+
+    const rand = (min, max) => min + Math.random() * (max - min);
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const distance = (a, b, c, d) => Math.hypot(a - c, b - d);
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      W = Math.max(320, rect.width);
+      H = Math.max(360, rect.height);
+      canvas.width = Math.round(W * scale);
+      canvas.height = Math.round(H * scale);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      computeLayout();
+    }
+
+    function computeLayout() {
+      const pad = clamp(W * 0.045, 14, 22);
+      const laneH = clamp(H * 0.135, 74, 104);
+      const gap = clamp(H * 0.025, 12, 20);
+      const top = clamp(H * 0.035, 16, 28);
+      const entranceH = clamp(H * 0.22, 120, 168);
+
+      layout.platforms = lines.map((line, i) => ({
+        ...line,
+        x: pad,
+        y: top + i * (laneH + gap),
+        w: W - pad * 2,
+        h: laneH,
+        progress: rand(0.05, 0.88),
+        trainX: W + 80
+      }));
+
+      layout.entrance = {
+        x: pad,
+        y: H - entranceH - pad,
+        w: W - pad * 2,
+        h: entranceH
+      };
+    }
+
+    function startGame() {
+      started = true;
+      resetGame();
+      hideDialog();
+    }
+
+    function resetGame() {
+      Object.assign(state, {
+        time: ROUND_TIME,
+        score: 0,
+        combo: 0,
+        passengers: [],
+        effects: [],
+        spawnTimer: 0,
+        spawnEvery: 1.15,
+        trainTimer: 2.2,
+        trainEvery: 3.8,
+        nextId: 1
+      });
+      running = true;
+      finished = false;
+      dragging = null;
+      setPause(false);
+      for (let i = 0; i < 6; i += 1) spawnPassenger(true);
+      updateHud();
+    }
+
+    function setPause(paused) {
+      running = !paused && started && !finished;
+      pauseIcon.innerHTML = paused
+        ? '<path d="M8 5v14l11-7z"/>'
+        : '<path d="M8 5v14"/><path d="M16 5v14"/>';
+      pauseBtn.setAttribute("aria-label", paused ? "继续" : "暂停");
+      pauseBtn.setAttribute("title", paused ? "继续" : "暂停");
+    }
+
+    function showDialog(title, text, action) {
+      dialogTitle.textContent = title;
+      dialogText.textContent = text;
+      startBtn.textContent = action;
+      veil.classList.add("show");
+    }
+
+    function hideDialog() {
+      veil.classList.remove("show");
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 640);
+    }
+
+    function updateHud() {
+      timeEl.textContent = Math.ceil(state.time).toString();
+      scoreEl.textContent = state.score.toString();
+      comboEl.textContent = state.combo.toString();
+    }
+
+    function spawnPassenger(initial = false) {
+      if (!layout.entrance.w) return;
+      const line = lines[Math.floor(Math.random() * lines.length)];
+      const e = layout.entrance;
+      const r = clamp(W * 0.045, 17, 22);
+      state.passengers.push({
+        id: state.nextId++,
+        line: line.id,
+        color: line.color,
+        shape: line.shape,
+        x: clamp(e.x + rand(28, e.w - 28), e.x + r, e.x + e.w - r),
+        y: clamp(e.y + rand(36, e.h - 30), e.y + r, e.y + e.h - r),
+        r,
+        vx: initial ? rand(-10, 10) : rand(-18, 18),
+        vy: initial ? rand(-8, 8) : rand(-16, 16),
+        zone: null,
+        age: rand(0, 5)
+      });
+    }
+
+    function tick(dt) {
+      if (!running) return;
+
+      state.time -= dt;
+      if (state.time <= 0) {
+        state.time = 0;
+        finishGame();
+        return;
+      }
+
+      const rush = 1 - state.time / ROUND_TIME;
+      state.spawnEvery = clamp(1.08 - rush * 0.52, 0.48, 1.08);
+      state.trainEvery = clamp(3.8 - rush * 1.05, 2.35, 3.8);
+      state.spawnTimer -= dt;
+      state.trainTimer -= dt;
+
+      if (state.spawnTimer <= 0 && state.passengers.length < 24) {
+        spawnPassenger();
+        state.spawnTimer = state.spawnEvery;
+      }
+
+      if (state.trainTimer <= 0) {
+        trainArrives();
+        state.trainTimer = state.trainEvery;
+      }
+
+      movePassengers(dt);
+      movePlatforms(dt);
+      moveEffects(dt);
+      updateHud();
+    }
+
+    function movePassengers(dt) {
+      for (const p of state.passengers) {
+        p.age += dt;
+        if (dragging && dragging.id === p.id) continue;
+
+        if (p.zone) {
+          const platform = layout.platforms.find(item => item.id === p.zone);
+          if (!platform) continue;
+          const group = state.passengers.filter(item => item.zone === p.zone);
+          const index = group.findIndex(item => item.id === p.id);
+          const cols = Math.max(4, Math.floor((platform.w - 86) / 42));
+          const x = platform.x + 56 + (index % cols) * 38;
+          const y = platform.y + 38 + Math.floor(index / cols) * 30;
+          p.x += (x - p.x) * Math.min(1, dt * 9);
+          p.y += (y - p.y) * Math.min(1, dt * 9);
+        } else {
+          const e = layout.entrance;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          if (p.x < e.x + p.r || p.x > e.x + e.w - p.r) p.vx *= -1;
+          if (p.y < e.y + p.r || p.y > e.y + e.h - p.r) p.vy *= -1;
+          p.x = clamp(p.x, e.x + p.r, e.x + e.w - p.r);
+          p.y = clamp(p.y, e.y + p.r, e.y + e.h - p.r);
+        }
+      }
+    }
+
+    function movePlatforms(dt) {
+      for (const platform of layout.platforms) {
+        platform.progress += dt / state.trainEvery;
+        if (platform.progress > 1) platform.progress -= 1;
+        const arriving = platform.progress > 0.82 || platform.progress < 0.08;
+        const target = arriving ? platform.x + platform.w - 110 : W + 90;
+        platform.trainX += (target - platform.trainX) * Math.min(1, dt * 5.5);
+      }
+    }
+
+    function moveEffects(dt) {
+      state.effects = state.effects
+        .map(effect => ({ ...effect, life: effect.life - dt }))
+        .filter(effect => effect.life > 0);
+    }
+
+    function trainArrives() {
+      const platform = layout.platforms.reduce((chosen, item) =>
+        item.progress > chosen.progress ? item : chosen, layout.platforms[0]);
+      platform.progress = 0;
+      platform.trainX = platform.x + platform.w - 110;
+
+      const keep = [];
+      let boarded = 0;
+      let missed = 0;
+      for (const p of state.passengers) {
+        if (p.zone !== platform.id) {
+          keep.push(p);
+          continue;
+        }
+        if (p.line === platform.id) {
+          boarded += 1;
+          state.combo += 1;
+          const points = 90 + Math.min(12, state.combo) * 10;
+          state.score += points;
+          effect(p.x, p.y, `+${points}`, p.color);
+        } else {
+          missed += 1;
+          state.combo = 0;
+          state.score = Math.max(0, state.score - 80);
+          effect(p.x, p.y, "-80", "#ef476f");
+        }
+      }
+
+      state.passengers = keep;
+      const crowd = boarded + missed;
+      if (crowd > 4) {
+        const penalty = (crowd - 4) * 30;
+        state.combo = 0;
+        state.score = Math.max(0, state.score - penalty);
+        effect(platform.x + platform.w * 0.5, platform.y + 22, `-${penalty}`, "#ef476f");
+      }
+      if (boarded > 0) showToast(`发车 +${boarded}`);
+      if (missed > 0) showToast("送错车");
+    }
+
+    function finishGame() {
+      finished = true;
+      running = false;
+      showDialog("到站", `${state.score} 分 · 最高连击 ${state.combo}`, "再来一局");
+      updateHud();
+    }
+
+    function effect(x, y, text, color) {
+      state.effects.push({ x, y, text, color, life: 0.8, max: 0.8 });
+    }
+
+    function dropPassenger(p, x, y) {
+      const platform = layout.platforms.find(item =>
+        x >= item.x - 14 &&
+        x <= item.x + item.w + 14 &&
+        y >= item.y - 14 &&
+        y <= item.y + item.h + 14
+      );
+
+      if (platform) {
+        p.zone = platform.id;
+        p.x = clamp(x, platform.x + p.r, platform.x + platform.w - p.r);
+        p.y = clamp(y, platform.y + p.r, platform.y + platform.h - p.r);
+        if (p.line === platform.id) {
+          state.score += 10;
+          effect(p.x, p.y - 12, "+10", p.color);
+        } else {
+          state.combo = 0;
+          state.score = Math.max(0, state.score - 15);
+          effect(p.x, p.y - 12, "-15", "#ef476f");
+        }
+      } else {
+        const e = layout.entrance;
+        p.zone = null;
+        p.x = clamp(x, e.x + p.r, e.x + e.w - p.r);
+        p.y = clamp(y, e.y + p.r, e.y + e.h - p.r);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      drawBack();
+      for (const platform of layout.platforms) drawPlatform(platform);
+      drawEntrance();
+      for (const p of state.passengers) {
+        if (!dragging || dragging.id !== p.id) drawPassenger(p);
+      }
+      if (dragging) drawPassenger(dragging, true);
+      drawEffects();
+      if (!started) drawIdleGlow();
+    }
+
+    function drawBack() {
+      ctx.fillStyle = "#071013";
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = "rgba(255, 247, 223, 0.06)";
+      ctx.lineWidth = 1;
+      for (let y = 0; y < H; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      for (let x = -H; x < W + H; x += 34) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + H * 0.34, H);
+        ctx.stroke();
+      }
+    }
+
+    function drawPlatform(platform) {
+      const crowd = state.passengers.filter(p => p.zone === platform.id).length;
+      const alert = crowd > 4 ? 0.24 + Math.sin(performance.now() / 120) * 0.12 : 0;
+      const radius = 8;
+
+      roundRect(platform.x, platform.y, platform.w, platform.h, radius);
+      ctx.fillStyle = platform.dark;
+      ctx.fill();
+      ctx.strokeStyle = alert ? `rgba(239, 71, 111, ${0.35 + alert})` : "rgba(255, 247, 223, 0.18)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = platform.color;
+      ctx.fillRect(platform.x + 10, platform.y + 10, platform.w - 20, 7);
+      drawShape(platform.shape, platform.x + 26, platform.y + 34, 11, platform.color);
+
+      ctx.fillStyle = "rgba(255, 247, 223, 0.77)";
+      ctx.font = "800 16px ui-sans-serif, system-ui";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${platform.label}线`, platform.x + 44, platform.y + 35);
+
+      ctx.font = "800 13px ui-sans-serif, system-ui";
+      ctx.textAlign = "right";
+      ctx.fillText(`${crowd}/4`, platform.x + platform.w - 14, platform.y + 35);
+
+      const barX = platform.x + 20;
+      const barY = platform.y + platform.h - 17;
+      const barW = platform.w - 40;
+      ctx.fillStyle = "rgba(255, 247, 223, 0.18)";
+      ctx.fillRect(barX, barY, barW, 4);
+      ctx.fillStyle = platform.color;
+      ctx.fillRect(barX, barY, barW * platform.progress, 4);
+
+      const trainW = clamp(platform.w * 0.34, 104, 142);
+      const trainH = platform.h - 30;
+      roundRect(platform.trainX, platform.y + 15, trainW, trainH, 7);
+      ctx.fillStyle = "#172334";
+      ctx.fill();
+      ctx.fillStyle = platform.color;
+      ctx.fillRect(platform.trainX + 10, platform.y + 24, trainW - 20, 5);
+      ctx.fillStyle = "#050b11";
+      for (let i = 0; i < 3; i += 1) {
+        ctx.fillRect(platform.trainX + 17 + i * 34, platform.y + 40, 22, 16);
+      }
+    }
+
+    function drawEntrance() {
+      const e = layout.entrance;
+      roundRect(e.x, e.y, e.w, e.h, 8);
+      ctx.fillStyle = "rgba(255, 247, 223, 0.08)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 247, 223, 0.2)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(32, 214, 230, 0.5)";
+      ctx.fillRect(e.x + 14, e.y + 13, e.w - 28, 5);
+      ctx.fillStyle = "rgba(255, 247, 223, 0.66)";
+      ctx.font = "800 14px ui-sans-serif, system-ui";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.fillText("候车厅", e.x + 16, e.y + 26);
+
+      ctx.fillStyle = "rgba(5, 9, 14, 0.55)";
+      for (let i = 0; i < 5; i += 1) {
+        const gx = e.x + e.w - 132 + i * 24;
+        ctx.fillRect(gx, e.y + e.h - 28, 15, 11);
+      }
+    }
+
+    function drawPassenger(p, held = false) {
+      const bob = held ? 0 : Math.sin((p.age + p.id) * 5.5) * 1.5;
+      ctx.save();
+      ctx.translate(p.x, p.y + bob);
+      if (held) {
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 22;
+      }
+
+      ctx.fillStyle = "#111b29";
+      ctx.strokeStyle = "rgba(255, 247, 223, 0.72)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255, 247, 223, 0.88)";
+      ctx.fillRect(-8, 1, 5, 5);
+      ctx.fillRect(3, 1, 5, 5);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-6, 10, 12, 3);
+
+      ctx.beginPath();
+      ctx.fillStyle = p.color;
+      ctx.arc(0, -p.r - 11, 10, 0, Math.PI * 2);
+      ctx.fill();
+      drawShape(p.shape, 0, -p.r - 11, 6, "#071013");
+      ctx.restore();
+    }
+
+    function drawShape(shape, x, y, size, color) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (shape === "circle") {
+        ctx.arc(0, 0, size, 0, Math.PI * 2);
+      } else if (shape === "triangle") {
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size * 0.95, size * 0.75);
+        ctx.lineTo(-size * 0.95, size * 0.75);
+        ctx.closePath();
+      } else {
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size, 0);
+        ctx.lineTo(0, size);
+        ctx.lineTo(-size, 0);
+        ctx.closePath();
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawEffects() {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "900 18px ui-sans-serif, system-ui";
+      for (const item of state.effects) {
+        const t = item.life / item.max;
+        ctx.globalAlpha = clamp(t, 0, 1);
+        ctx.fillStyle = item.color;
+        ctx.fillText(item.text, item.x, item.y - (1 - t) * 34);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawIdleGlow() {
+      for (const platform of layout.platforms) {
+        ctx.fillStyle = platform.color;
+        ctx.globalAlpha = 0.08 + Math.sin(performance.now() / 500 + platform.y) * 0.03;
+        ctx.fillRect(platform.x + 10, platform.y + 10, platform.w - 20, 7);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function roundRect(x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.lineTo(x + w - rr, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr);
+      ctx.quadraticCurveTo(x, y, x + rr, y);
+      ctx.closePath();
+    }
+
+    function pointerPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener("pointerdown", evt => {
+      if (!started || finished) return;
+      evt.preventDefault();
+      const pos = pointerPos(evt);
+      const target = [...state.passengers].reverse()
+        .find(p => distance(pos.x, pos.y, p.x, p.y) <= p.r + 18);
+      if (!target) return;
+      activePointer = evt.pointerId;
+      dragging = target;
+      target.x = pos.x;
+      target.y = pos.y;
+      state.passengers = state.passengers.filter(p => p.id !== target.id);
+      state.passengers.push(target);
+      canvas.setPointerCapture(evt.pointerId);
+    }, { passive: false });
+
+    canvas.addEventListener("pointermove", evt => {
+      if (activePointer !== evt.pointerId || !dragging) return;
+      evt.preventDefault();
+      const pos = pointerPos(evt);
+      dragging.x = pos.x;
+      dragging.y = pos.y;
+    }, { passive: false });
+
+    function releasePointer(evt) {
+      if (activePointer !== evt.pointerId || !dragging) return;
+      evt.preventDefault();
+      const pos = pointerPos(evt);
+      dropPassenger(dragging, pos.x, pos.y);
+      dragging = null;
+      activePointer = null;
+    }
+
+    canvas.addEventListener("pointerup", releasePointer, { passive: false });
+    canvas.addEventListener("pointercancel", releasePointer, { passive: false });
+
+    restartBtn.addEventListener("click", () => {
+      if (!started) {
+        startGame();
+        return;
+      }
+      resetGame();
+      hideDialog();
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      if (!started || finished) return;
+      setPause(running);
+      if (running) {
+        hideDialog();
+      } else {
+        showDialog("暂停", `${state.score} 分`, "继续");
+      }
+    });
+
+    startBtn.addEventListener("click", () => {
+      if (!started || finished) {
+        startGame();
+        return;
+      }
+      setPause(false);
+      hideDialog();
+    });
+
+    document.addEventListener("gesturestart", evt => evt.preventDefault());
+    document.addEventListener("touchmove", evt => {
+      if (evt.target === canvas) evt.preventDefault();
+    }, { passive: false });
+
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      tick(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", () => window.setTimeout(resize, 250));
+    resize();
+    updateHud();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
