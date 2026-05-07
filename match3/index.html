@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no, email=no, address=no">
+  <meta name="theme-color" content="#071015">
+  <title>星轨消消乐</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #fff8e8;
+      --soft: rgba(255, 248, 232, 0.68);
+      --line: rgba(255, 248, 232, 0.18);
+      --panel: rgba(10, 18, 28, 0.84);
+      --cyan: #1dd9d2;
+      --gold: #f4bd3b;
+      --rose: #ec5f7a;
+      --green: #61d68e;
+      --violet: #9d83ff;
+      --blue: #55a7ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(29, 217, 210, 0.13), transparent 30%),
+        radial-gradient(circle at 88% 10%, rgba(244, 189, 59, 0.12), transparent 26%),
+        linear-gradient(155deg, #061015 0%, #111521 52%, #1b1218 100%);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+      overscroll-behavior: none;
+    }
+
+    .app {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 320px;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(4, 9, 14, 0.94), rgba(4, 9, 14, 0.42));
+      backdrop-filter: blur(16px);
+      z-index: 2;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 36px;
+      height: 36px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 50% 50%, var(--gold) 0 18%, transparent 19%),
+        conic-gradient(from 45deg, var(--cyan), var(--violet), var(--rose), var(--green), var(--cyan));
+      box-shadow: 0 0 0 3px rgba(29, 217, 210, 0.12);
+      flex: 0 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .sub {
+      margin-top: 4px;
+      color: var(--soft);
+      font-size: 11px;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(255, 248, 232, 0.26);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(12, 21, 32, 0.86);
+      display: grid;
+      place-items: center;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      background: rgba(25, 39, 54, 0.94);
+    }
+
+    button svg {
+      width: 21px;
+      height: 21px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hud {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .metric {
+      height: 46px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--soft);
+      font-size: 11px;
+      line-height: 1;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 19px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    main {
+      position: relative;
+      min-height: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .veil {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background: rgba(4, 9, 14, 0.7);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+      z-index: 3;
+    }
+
+    .veil.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .dialog {
+      width: min(316px, 92vw);
+      padding: 18px;
+      border: 1px solid rgba(255, 248, 232, 0.24);
+      border-radius: 8px;
+      background: rgba(10, 18, 28, 0.96);
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.38);
+      text-align: center;
+    }
+
+    .dialog h2 {
+      margin: 0 0 10px;
+      font-size: 27px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .dialog p {
+      margin: 0 0 16px;
+      color: var(--soft);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .primary {
+      width: 100%;
+      height: 46px;
+      border-color: rgba(29, 217, 210, 0.52);
+      background: #12303a;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      max-width: calc(100% - 32px);
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(7, 13, 20, 0.9);
+      font-size: 13px;
+      line-height: 1.3;
+      white-space: nowrap;
+      transform: translateX(-50%) translateY(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      z-index: 4;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (min-width: 560px) {
+      .app {
+        width: 430px;
+        max-height: 932px;
+        margin: 0 auto;
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        border-left: 1px solid rgba(255, 248, 232, 0.12);
+        border-right: 1px solid rgba(255, 248, 232, 0.12);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="mark" aria-hidden="true"></div>
+        <div>
+          <h1>星轨消消乐</h1>
+          <div class="sub">旋转整条星轨，凑出能量链</div>
+        </div>
+      </div>
+      <div class="buttons">
+        <button id="restart" aria-label="重新开始" title="重新开始">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/></svg>
+        </button>
+        <button id="hint" aria-label="提示" title="提示">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M8.5 14a6 6 0 1 1 7 0c-.8.6-1.2 1.4-1.4 2h-4.2c-.2-.6-.6-1.4-1.4-2z"/></svg>
+        </button>
+      </div>
+      <div class="hud" aria-live="polite">
+        <div class="metric"><span>步数</span><strong id="moves">28</strong></div>
+        <div class="metric"><span>能量</span><strong id="score">0</strong></div>
+        <div class="metric"><span>目标</span><strong id="goal">1800</strong></div>
+      </div>
+    </header>
+    <main>
+      <canvas id="game" aria-label="星轨消消乐"></canvas>
+      <div id="veil" class="veil show">
+        <div class="dialog">
+          <h2 id="dialogTitle">点亮星图</h2>
+          <p id="dialogText">滑动一整行或一整列，让星星循环移动。三颗以上相连会爆发，连锁越多越亮。</p>
+          <button id="start" class="primary">开始</button>
+        </div>
+      </div>
+      <div id="toast" class="toast">连锁</div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const movesEl = document.getElementById("moves");
+    const scoreEl = document.getElementById("score");
+    const goalEl = document.getElementById("goal");
+    const restartBtn = document.getElementById("restart");
+    const hintBtn = document.getElementById("hint");
+    const veil = document.getElementById("veil");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const dialogText = document.getElementById("dialogText");
+    const startBtn = document.getElementById("start");
+    const toast = document.getElementById("toast");
+
+    const SIZE = 7;
+    const TYPES = [
+      { name: "sun", color: "#f4bd3b", shape: "circle" },
+      { name: "comet", color: "#1dd9d2", shape: "triangle" },
+      { name: "flare", color: "#ec5f7a", shape: "diamond" },
+      { name: "leaf", color: "#61d68e", shape: "hex" },
+      { name: "violet", color: "#9d83ff", shape: "star" }
+    ];
+    const GOAL = 1800;
+    const START_MOVES = 28;
+
+    let W = 1;
+    let H = 1;
+    let scale = 1;
+    let board = [];
+    let particles = [];
+    let floating = [];
+    let selectedHint = null;
+    let started = false;
+    let resolving = false;
+    let gameOver = false;
+    let drag = null;
+    let toastTimer = null;
+    let layout = {
+      boardX: 0,
+      boardY: 0,
+      cell: 0,
+      boardSize: 0,
+      dialY: 0
+    };
+    let state = {
+      moves: START_MOVES,
+      score: 0,
+      chain: 0
+    };
+
+    const rand = (min, max) => min + Math.random() * (max - min);
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      W = rect.width;
+      H = rect.height;
+      canvas.width = Math.floor(W * scale);
+      canvas.height = Math.floor(H * scale);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      computeLayout();
+    }
+
+    function computeLayout() {
+      const pad = clamp(W * 0.045, 14, 22);
+      const size = Math.min(W - pad * 2, H - 156);
+      layout.boardSize = Math.max(286, Math.min(size, 386));
+      layout.cell = layout.boardSize / SIZE;
+      layout.boardX = (W - layout.boardSize) / 2;
+      layout.boardY = Math.max(22, (H - layout.boardSize) * 0.42);
+      layout.dialY = layout.boardY + layout.boardSize + 34;
+    }
+
+    function newGame() {
+      state = { moves: START_MOVES, score: 0, chain: 0 };
+      selectedHint = null;
+      resolving = false;
+      gameOver = false;
+      board = makeBoard();
+      particles = [];
+      floating = [];
+      updateHud();
+      hideDialog();
+      resolveBoard(true);
+    }
+
+    function makeBoard() {
+      const next = [];
+      for (let y = 0; y < SIZE; y += 1) {
+        const row = [];
+        for (let x = 0; x < SIZE; x += 1) {
+          let type = randomType();
+          let guard = 0;
+          while (guard < 20 && wouldMatch(row, next, x, y, type)) {
+            type = randomType();
+            guard += 1;
+          }
+          row.push({ type, power: Math.random() < 0.08 ? 1 : 0, pop: 0, fall: 0 });
+        }
+        next.push(row);
+      }
+      return next;
+    }
+
+    function randomType() {
+      return Math.floor(Math.random() * TYPES.length);
+    }
+
+    function wouldMatch(row, rows, x, y, type) {
+      const left = x >= 2 && row[x - 1].type === type && row[x - 2].type === type;
+      const up = y >= 2 && rows[y - 1][x].type === type && rows[y - 2][x].type === type;
+      return left || up;
+    }
+
+    function updateHud() {
+      movesEl.textContent = state.moves;
+      scoreEl.textContent = state.score;
+      goalEl.textContent = GOAL;
+    }
+
+    function showDialog(title, text, action) {
+      dialogTitle.textContent = title;
+      dialogText.textContent = text;
+      startBtn.textContent = action;
+      veil.classList.add("show");
+    }
+
+    function hideDialog() {
+      veil.classList.remove("show");
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 720);
+    }
+
+    function cellAt(x, y) {
+      const bx = Math.floor((x - layout.boardX) / layout.cell);
+      const by = Math.floor((y - layout.boardY) / layout.cell);
+      if (bx < 0 || bx >= SIZE || by < 0 || by >= SIZE) return null;
+      return { x: bx, y: by };
+    }
+
+    function shiftRow(row, dir) {
+      if (dir > 0) board[row].unshift(board[row].pop());
+      else board[row].push(board[row].shift());
+    }
+
+    function shiftCol(col, dir) {
+      const values = [];
+      for (let y = 0; y < SIZE; y += 1) values.push(board[y][col]);
+      if (dir > 0) values.unshift(values.pop());
+      else values.push(values.shift());
+      for (let y = 0; y < SIZE; y += 1) board[y][col] = values[y];
+    }
+
+    function applyMove(axis, index, dir) {
+      if (resolving || gameOver) return;
+      selectedHint = null;
+      if (axis === "row") shiftRow(index, dir);
+      else shiftCol(index, dir);
+      state.moves -= 1;
+      state.chain = 0;
+      updateHud();
+      resolveBoard(false);
+    }
+
+    async function resolveBoard(initial) {
+      resolving = true;
+      await wait(90);
+      let matches = findMatches();
+      if (initial && !matches.size) {
+        resolving = false;
+        return;
+      }
+
+      while (matches.size) {
+        state.chain += 1;
+        const bonus = state.chain > 1 ? state.chain * 40 : 0;
+        const points = matches.size * 18 + bonus;
+        state.score += points;
+        showToast(state.chain > 1 ? `连锁 x${state.chain}` : `+${points}`);
+        burst(matches);
+        updateHud();
+        await wait(210);
+        collapse(matches);
+        await wait(160);
+        matches = findMatches();
+      }
+
+      resolving = false;
+      ensureMove();
+      if (!initial) checkEnd();
+    }
+
+    function findMatches() {
+      const hits = new Set();
+      for (let y = 0; y < SIZE; y += 1) {
+        let run = 1;
+        for (let x = 1; x <= SIZE; x += 1) {
+          const same = x < SIZE && board[y][x].type === board[y][x - 1].type;
+          if (same) {
+            run += 1;
+          } else {
+            if (run >= 3) {
+              for (let k = 0; k < run; k += 1) hits.add(`${x - 1 - k},${y}`);
+            }
+            run = 1;
+          }
+        }
+      }
+
+      for (let x = 0; x < SIZE; x += 1) {
+        let run = 1;
+        for (let y = 1; y <= SIZE; y += 1) {
+          const same = y < SIZE && board[y][x].type === board[y - 1][x].type;
+          if (same) {
+            run += 1;
+          } else {
+            if (run >= 3) {
+              for (let k = 0; k < run; k += 1) hits.add(`${x},${y - 1 - k}`);
+            }
+            run = 1;
+          }
+        }
+      }
+
+      for (const key of [...hits]) {
+        const [x, y] = key.split(",").map(Number);
+        if (board[y][x].power) {
+          for (let i = 0; i < SIZE; i += 1) {
+            hits.add(`${i},${y}`);
+            hits.add(`${x},${i}`);
+          }
+        }
+      }
+      return hits;
+    }
+
+    function burst(matches) {
+      for (const key of matches) {
+        const [x, y] = key.split(",").map(Number);
+        const tile = board[y][x];
+        const cx = layout.boardX + x * layout.cell + layout.cell / 2;
+        const cy = layout.boardY + y * layout.cell + layout.cell / 2;
+        for (let i = 0; i < 7; i += 1) {
+          particles.push({
+            x: cx,
+            y: cy,
+            vx: rand(-90, 90),
+            vy: rand(-120, 70),
+            life: rand(0.35, 0.7),
+            max: 0.7,
+            color: TYPES[tile.type].color
+          });
+        }
+      }
+    }
+
+    function collapse(matches) {
+      for (const key of matches) {
+        const [x, y] = key.split(",").map(Number);
+        board[y][x] = null;
+      }
+
+      for (let x = 0; x < SIZE; x += 1) {
+        const stack = [];
+        for (let y = SIZE - 1; y >= 0; y -= 1) {
+          if (board[y][x]) stack.push(board[y][x]);
+        }
+        for (let y = SIZE - 1; y >= 0; y -= 1) {
+          const tile = stack.shift() || {
+            type: randomType(),
+            power: Math.random() < 0.1 ? 1 : 0,
+            pop: 0,
+            fall: 1
+          };
+          board[y][x] = tile;
+        }
+      }
+    }
+
+    function ensureMove() {
+      if (findPossibleMove()) return;
+      board = makeBoard();
+      showToast("星图重排");
+    }
+
+    function findPossibleMove() {
+      for (let y = 0; y < SIZE; y += 1) {
+        for (const dir of [-1, 1]) {
+          shiftRow(y, dir);
+          const ok = findMatches().size > 0;
+          shiftRow(y, -dir);
+          if (ok) return { axis: "row", index: y, dir };
+        }
+      }
+      for (let x = 0; x < SIZE; x += 1) {
+        for (const dir of [-1, 1]) {
+          shiftCol(x, dir);
+          const ok = findMatches().size > 0;
+          shiftCol(x, -dir);
+          if (ok) return { axis: "col", index: x, dir };
+        }
+      }
+      return null;
+    }
+
+    function checkEnd() {
+      if (state.score >= GOAL) {
+        gameOver = true;
+        showDialog("星图点亮", `${state.score} 能量 · 还剩 ${state.moves} 步`, "再来一局");
+      } else if (state.moves <= 0) {
+        gameOver = true;
+        showDialog("能量耗尽", `${state.score}/${GOAL}，差一点就亮了`, "再来一局");
+      }
+    }
+
+    function hint() {
+      if (resolving || gameOver || !started) return;
+      selectedHint = findPossibleMove();
+      showToast(selectedHint ? "试试发光的星轨" : "星图重排");
+      if (!selectedHint) board = makeBoard();
+    }
+
+    function update(dt) {
+      particles = particles
+        .map(p => ({
+          ...p,
+          x: p.x + p.vx * dt,
+          y: p.y + p.vy * dt,
+          vy: p.vy + 180 * dt,
+          life: p.life - dt
+        }))
+        .filter(p => p.life > 0);
+      floating = floating
+        .map(f => ({ ...f, y: f.y - 24 * dt, life: f.life - dt }))
+        .filter(f => f.life > 0);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      drawBack();
+      drawBoard();
+      drawDial();
+      drawParticles();
+    }
+
+    function drawBack() {
+      ctx.fillStyle = "#071015";
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = "rgba(255,248,232,0.06)";
+      ctx.lineWidth = 1;
+      for (let y = 0; y < H; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      for (let x = -H; x < W + H; x += 36) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + H * 0.28, H);
+        ctx.stroke();
+      }
+    }
+
+    function drawBoard() {
+      const { boardX, boardY, boardSize, cell } = layout;
+      roundRect(boardX - 8, boardY - 8, boardSize + 16, boardSize + 16, 8);
+      ctx.fillStyle = "rgba(255,248,232,0.08)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,248,232,0.18)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      for (let y = 0; y < SIZE; y += 1) {
+        for (let x = 0; x < SIZE; x += 1) {
+          const tile = board[y] && board[y][x];
+          if (!tile) continue;
+          drawCell(x, y, tile);
+        }
+      }
+
+      if (selectedHint) {
+        ctx.save();
+        ctx.globalAlpha = 0.45 + Math.sin(performance.now() / 160) * 0.22;
+        ctx.strokeStyle = "#fff8e8";
+        ctx.lineWidth = 3;
+        if (selectedHint.axis === "row") {
+          roundRect(boardX + 3, boardY + selectedHint.index * cell + 3, boardSize - 6, cell - 6, 8);
+        } else {
+          roundRect(boardX + selectedHint.index * cell + 3, boardY + 3, cell - 6, boardSize - 6, 8);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawCell(x, y, tile) {
+      const { boardX, boardY, cell } = layout;
+      const px = boardX + x * cell;
+      const py = boardY + y * cell;
+      const cx = px + cell / 2;
+      const cy = py + cell / 2;
+      const info = TYPES[tile.type];
+      const pulse = tile.power ? Math.sin(performance.now() / 180 + x + y) * 2 + 2 : 0;
+
+      roundRect(px + 4, py + 4, cell - 8, cell - 8, 8);
+      ctx.fillStyle = "rgba(8,14,22,0.86)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,248,232,0.12)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.shadowColor = info.color;
+      ctx.shadowBlur = tile.power ? 14 : 6;
+      drawShape(info.shape, cx, cy, cell * 0.23 + pulse, info.color);
+      ctx.restore();
+
+      if (tile.power) {
+        ctx.strokeStyle = info.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, cell * 0.32, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    function drawDial() {
+      const y = layout.dialY;
+      if (y > H - 48) return;
+      ctx.fillStyle = "rgba(255,248,232,0.7)";
+      ctx.font = "bold 13px ui-sans-serif, system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("横滑移动整行 · 竖滑移动整列", W / 2, y);
+    }
+
+    function drawParticles() {
+      for (const p of particles) {
+        ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawShape(shape, x, y, size, color) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (shape === "circle") {
+        ctx.arc(0, 0, size, 0, Math.PI * 2);
+      } else if (shape === "triangle") {
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size * 0.92, size * 0.72);
+        ctx.lineTo(-size * 0.92, size * 0.72);
+        ctx.closePath();
+      } else if (shape === "diamond") {
+        ctx.moveTo(0, -size);
+        ctx.lineTo(size, 0);
+        ctx.lineTo(0, size);
+        ctx.lineTo(-size, 0);
+        ctx.closePath();
+      } else if (shape === "hex") {
+        for (let i = 0; i < 6; i += 1) {
+          const a = Math.PI / 6 + i * Math.PI / 3;
+          const px = Math.cos(a) * size;
+          const py = Math.sin(a) * size;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      } else {
+        for (let i = 0; i < 10; i += 1) {
+          const a = -Math.PI / 2 + i * Math.PI / 5;
+          const r = i % 2 ? size * 0.46 : size;
+          const px = Math.cos(a) * r;
+          const py = Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function roundRect(x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.lineTo(x + w - rr, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr);
+      ctx.quadraticCurveTo(x, y, x + rr, y);
+      ctx.closePath();
+    }
+
+    function wait(ms) {
+      return new Promise(resolve => window.setTimeout(resolve, ms));
+    }
+
+    function getPointer(evt) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener("pointerdown", evt => {
+      if (!started || resolving || gameOver) return;
+      evt.preventDefault();
+      const pos = getPointer(evt);
+      const cell = cellAt(pos.x, pos.y);
+      if (!cell) return;
+      drag = { id: evt.pointerId, sx: pos.x, sy: pos.y, cell };
+      canvas.setPointerCapture(evt.pointerId);
+    }, { passive: false });
+
+    canvas.addEventListener("pointerup", evt => {
+      if (!drag || drag.id !== evt.pointerId) return;
+      evt.preventDefault();
+      const pos = getPointer(evt);
+      const dx = pos.x - drag.sx;
+      const dy = pos.y - drag.sy;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) > layout.cell * 0.35) {
+        if (Math.abs(dx) > Math.abs(dy)) applyMove("row", drag.cell.y, dx > 0 ? 1 : -1);
+        else applyMove("col", drag.cell.x, dy > 0 ? 1 : -1);
+      }
+      drag = null;
+    }, { passive: false });
+
+    canvas.addEventListener("pointercancel", () => {
+      drag = null;
+    });
+
+    restartBtn.addEventListener("click", () => {
+      started = true;
+      newGame();
+    });
+
+    hintBtn.addEventListener("click", hint);
+
+    startBtn.addEventListener("click", () => {
+      started = true;
+      newGame();
+    });
+
+    document.addEventListener("gesturestart", evt => evt.preventDefault());
+    document.addEventListener("touchmove", evt => {
+      if (evt.target === canvas) evt.preventDefault();
+    }, { passive: false });
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener("resize", resize);
+    window.addEventListener("orientationchange", () => window.setTimeout(resize, 240));
+    resize();
+    board = makeBoard();
+    updateHud();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
